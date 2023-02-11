@@ -7,7 +7,9 @@
 
 
 # Example:
-# ./tools/generate_tsv.py --gpu 0,1,2,3,4,5,6,7 --cfg experiments/cfgs/faster_rcnn_end2end_resnet.yml --def models/vg/ResNet-101/faster_rcnn_end2end/test.prototxt --out test2014_resnet101_faster_rcnn_genome.tsv --net data/faster_rcnn_models/resnet101_faster_rcnn_final.caffemodel --split coco_test2014
+# ./tools/generate_tsv.py --gpu 0,1,2,3 --cfg experiments/cfgs/faster_rcnn_end2end_resnet.yml --def models/vg/ResNet-101/faster_rcnn_end2end/test.prototxt --out resnet101_faster_rcnn_val2014.tsv --net data/faster_rcnn_models/resnet101_faster_rcnn_final.caffemodel --split val2014
+
+
 
 
 import _init_paths
@@ -41,28 +43,13 @@ MAX_BOXES = 100
 def load_image_ids(split_name):
     ''' Load a list of (path,image_id tuples). Modify this to suit your data locations. '''
     split = []
-    if split_name == 'coco_test2014':
-      with open('/data/coco/annotations/image_info_test2014.json') as f:
-        data = json.load(f)
-        for item in data['images']:
-          image_id = int(item['id'])
-          filepath = os.path.join('/data/test2014/', item['file_name'])
-          split.append((filepath,image_id))
-    elif split_name == 'coco_test2015':
-      with open('/data/coco/annotations/image_info_test2015.json') as f:
-        data = json.load(f)
-        for item in data['images']:
-          image_id = int(item['id'])
-          filepath = os.path.join('/data/test2015/', item['file_name'])
-          split.append((filepath,image_id))
-    elif split_name == 'genome':
-      with open('/data/visualgenome/image_data.json') as f:
-        for item in json.load(f):
-          image_id = int(item['image_id'])
-          filepath = os.path.join('/data/visualgenome/', item['url'].split('rak248/')[-1])
-          split.append((filepath,image_id))      
-    else:
-      print 'Unknown split'
+    ann_root = './annotation'
+    annotation = json.load(open('./annotation/coco_karpathy_test.json', 'r'))
+    for img_id, ann in enumerate(annotation):
+        filepath = os.path.join('/ssd1/data/coco/images/',split_name, ann['image'])
+        split.append(filepath)
+        print(filepath)
+        print(sk)
     return split
 
     
@@ -124,7 +111,7 @@ def parse_args():
                         help='optional config file', default=None, type=str)
     parser.add_argument('--split', dest='data_split',
                         help='dataset to use',
-                        default='karpathy_train', type=str)
+                        default='cutmix_0.9', type=str)
     parser.add_argument('--set', dest='set_cfgs',
                         help='set config keys', default=None,
                         nargs=argparse.REMAINDER)
@@ -148,9 +135,9 @@ def generate_tsv(gpu_id, prototxt, weights, image_ids, outfile):
                 found_ids.add(int(item['image_id']))
     missing = wanted_ids - found_ids
     if len(missing) == 0:
-        print 'GPU {:d}: already completed {:d}'.format(gpu_id, len(image_ids))
+        print('GPU {:d}: already completed {:d}'.format(gpu_id, len(image_ids)))
     else:
-        print 'GPU {:d}: missing {:d}/{:d}'.format(gpu_id, len(missing), len(image_ids))
+        print('GPU {:d}: missing {:d}/{:d}'.format(gpu_id, len(missing), len(image_ids)))
     if len(missing) > 0:
         caffe.set_mode_gpu()
         caffe.set_device(gpu_id)
@@ -165,9 +152,9 @@ def generate_tsv(gpu_id, prototxt, weights, image_ids, outfile):
                     writer.writerow(get_detections_from_im(net, im_file, image_id))
                     _t['misc'].toc()
                     if (count % 100) == 0:
-                        print 'GPU {:d}: {:d}/{:d} {:.3f}s (projected finish: {:.2f} hours)' \
+                        print('GPU {:d}: {:d}/{:d} {:.3f}s (projected finish: {:.2f} hours)' \
                               .format(gpu_id, count+1, len(missing), _t['misc'].average_time, 
-                              _t['misc'].average_time*(len(missing)-count)/3600)
+                              _t['misc'].average_time*(len(missing)-count)/3600))
                     count += 1
 
                     
@@ -187,7 +174,7 @@ def merge_tsvs():
                     try:
                       writer.writerow(item)
                     except Exception as e:
-                      print e                           
+                      print(e)
 
                       
      
